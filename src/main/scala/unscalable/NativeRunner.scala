@@ -29,13 +29,30 @@ class NativeRunner {
 }
 
 object NativeRunner {
+  lazy val defaultCharset = Charset.forName("UTF-8")
 
   case class NativeCommandResult(returnCode: Future[Int], stdin: SinkEndpoint, stdout: SourceEndpoint, stderr: SourceEndpoint)
 
   case class SinkEndpoint(bytes: Sink[Byte, NotUsed])
 
   case class SourceEndpoint(bytes: Source[Byte, NotUsed]) {
-    lazy val defaultCharset = Charset.forName("UTF-8")
+    def lines(charset: Charset = defaultCharset): Source[String, NotUsed] = chars(charset).statefulMapConcat[String] { () =>
+      val buf = mutable.Queue[Char]()
+
+    { char: Char =>
+      char match {
+        case '\r' =>
+          List.empty
+        case '\n' =>
+          val line = buf.toList
+          buf.clear()
+          List(line.mkString)
+        case x =>
+          buf += x
+          List.empty
+      }
+    }
+    }
 
     def chars(charset: Charset = defaultCharset): Source[Char, NotUsed] = bytes.statefulMapConcat[Char] { () =>
       val decoder = charset.newDecoder()
@@ -52,24 +69,6 @@ object NativeRunner {
           0.until(outBuf.position()).map(outBuf.get).toList
         case x =>
           x.throwException().asInstanceOf[Nothing] // Should be unreachable, since an exception *should* be thrown
-      }
-    }
-    }
-
-    def lines(charset: Charset = defaultCharset): Source[String, NotUsed] = chars(charset).statefulMapConcat[String] { () =>
-      val buf = mutable.Queue[Char]()
-
-    { char: Char =>
-      char match {
-        case '\r' =>
-          List.empty
-        case '\n' =>
-          val line = buf.toList
-          buf.clear()
-          List(line.mkString)
-        case x =>
-          buf += x
-          List.empty
       }
     }
     }

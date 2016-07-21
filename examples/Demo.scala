@@ -1,7 +1,9 @@
 import unscalable.Prelude._
 
-n.ls().stdout.lines().runForeach(println)
-n.echo("hi", "there").stdout.lines().runForeach(println)
-n.echo("--help").stdout.lines().runForeach(println)
+run(n.ls())
+println()
+run(n.echo("hi", "there"))
+println()
+run(n.echo("--help"))
 
 actorSystem.terminate()
